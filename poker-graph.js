@@ -2,53 +2,18 @@ const express  = require('express');
 const { graphqlHTTP } = require('express-graphql');
 const { buildSchema } = require('graphql');
 
-/*
-Exemple CRUD amb Alumnes
-sergi.grau@fje.edu
-20.12.20 versio 1
-
-query {
-  obtenirAlumnes {
-    codi
-    nom
-  }
-}
-
-query {
-  obtenirAlumne(codi:"2") {
-    codi
-    nom
-  }
-}
-
-mutation {
-  esborrarAlumne(codi:"1")
-  afegirAlumne(nom:"PERE") {
-    codi
-    nom
-  }
-}
-
-mutation {
-  modificarAlumne(codi:"3", nom:"sergi") {
-    codi
-    nom
-  }
-}
-*/
-
 const esquema = buildSchema(`
-
-type Alumne {
-  codi: ID!
-  nom: String
-}
 
 type Jugador {
   nom: String
   diners: Int
   aposta: Int
   cartes: [[String]]
+  ronda: Int
+  torn: Int
+  pot: Int
+  igualarAposta: Int
+  apostaJugador: Int
 }
 
 type datosPartida{
@@ -69,16 +34,17 @@ type PartidaConDatos {
 }
 
 type Query {
-  obtenirAlumne(codi: ID!): Alumne
-  obtenirAlumnes: [Alumne]
   informacioPartida(idPartida: ID!): datosPartida
+  interficieUsuari(idPartida: ID!, idJugador: Int): Jugador
 }
 
 type Mutation {
   iniciarJoc(idPartida: ID!, numJugadors: Int): String
-  afegirAlumne(nom: String): Alumne
-  modificarAlumne(codi: ID!, nom: String): Alumne
-  esborrarAlumne(codi: ID!): Int
+  apostaJugador(idPartida: ID!, quantitat: Int): String
+  tirarCarta(idPartida: ID!, descartes: [Int]): String
+  obtenerCarta(idPartida: ID!): String
+  abandonarPartida(idPartida: ID!): String
+  acabarJoc(idPartida: ID!): String
 }
 `);
 
@@ -123,30 +89,90 @@ const arrel = {
       let tmp = partides.get(idPartida); //tmp, porque graphql no lee Map, no puedes hacer get directamente
       return tmp;
     },
-    obtenirAlumnes() {
-        return alumnes;
+    interficieUsuari( {idPartida, idJugador} ){
+      let partida = partides.get(idPartida);
+      let tmp = {
+          cartes: partida.jugadors[idJugador].cartes,
+          ronda: partida.ronda,
+          torn: partida.torn,
+          pot: partida.pot,
+          diners: partida.jugadors[idJugador].diners,
+          igualarAposta: Math.max(...partida.jugadors.map(x => x.aposta)),
+          apostaJugador: partida.jugadors[idJugador].aposta
+      };
+      return tmp;
     },
-    obtenirAlumne: ( {codi} ) => {
-        let alumne = alumnes.find(a => a.codi == codi);
-        if (!alumne) throw new Error('cap Alumne amb codi ' + codi);
-        return alumne; 
+    apostaJugador( {idPartida, quantitat} ){
+      let partida = partides.get(idPartida);
+      if (partida.ronda == 1 || partida.ronda == 3) {
+        let jugadors = partida.jugadors;
+        let indexJugador = partida.torn;
+        if(quantitat > jugadors[indexJugador].diners){
+            return "No pots apostar més dels diners que tens";
+        }else{
+            if (quantitat + jugadors[indexJugador].aposta >= jugadors[(indexJugador - 1 < 0 ? jugadors.length - 1 : indexJugador - 1)].aposta) {
+                jugadors[indexJugador].aposta += parseInt(quantitat);
+                jugadors[indexJugador].diners -= parseInt(quantitat);
+                partida.pot += parseInt(quantitat);
+                partida.torn = indexJugador + 1 > jugadors.length - 1? 0: indexJugador + 1;
+                if (jugadors[indexJugador].aposta == jugadors[indexJugador + 1 > jugadors.length - 1? 0: indexJugador + 1].aposta) {
+                    partida.ronda--;
+                    if (partida.ronda == 0) {
+                        partides.delete(idPartida);
+                        return "Ha acabat el joc";
+                    }
+                }
+                return "aposta feta";
+            } else {
+                return "Error en la aposta";
+            }
+        }
+      } else {
+        return "és moment de cambiar cartes";
+      }
     },
-    afegirAlumne: ({ nom }) => {
-        // crea un codi aleatori
-        let codi = require('crypto').randomBytes(10).toString('hex');
-        let alumne = new Alumne(codi, nom);
-        alumnes.push(alumne);
-        return alumne;
+    tirarCarta( {idPartida, descartes} ){
+      let partida = partides.get(idPartida);
+      let indexJugador = partida.torn;
+      let cartes = partida.jugadors[indexJugador].cartes;
+      descartes.forEach(d => {
+          delete cartes[d];
+      });
+      partida.jugadors[indexJugador].cartes = cartes.filter(n=>n);
+      return "S'han esborrat les cartes ---> " + descartes;
     },
-    modificarAlumne: ({ codi, nom }) => {
-        let alumne = alumnes.find(a => a.codi == codi);
-        alumne.nom = nom;
-        return alumne;
+    obtenerCarta( {idPartida} ){
+      let partida = partides.get(idPartida);
+      let indexJugador = partida.torn;
+      let cartes = partida.jugadors[indexJugador].cartes;
+      let jugadors = partida.jugadors;
+      if (partida.ronda == 2) {    
+          for (let i = 0, max = cartes.length; i < (5 - max); i++) {
+              partides.get(idPartida).jugadors[indexJugador].cartes.push(partides.get(idPartida).baralla.splice(Math.floor(Math.random()*partides.get(idPartida).baralla.length),1));
+          }
+          if (partida.torn == partida.jugadors.length - 1) {
+              partida.ronda--;
+          }
+          partida.torn = indexJugador + 1 > jugadors.length - 1? 0: indexJugador + 1;
+          partida.jugadors[indexJugador].aposta = 0;
+          return "Cartes obtenides";
+      } else {
+        return"és moment de fer apostes";
+      }
     },
-    esborrarAlumne: ({codi})=>{
-        let alumne = alumnes.find(a => a.codi === codi);
-        let index = alumnes.indexOf(alumne);
-        alumnes.splice(index, 1);
+    abandonarPartida( {idPartida} ){
+      let partida = partides.get(idPartida);
+      let indexJugador = partida.torn;
+      if(partida.jugadors.length == 2){
+          partides.delete(idPartida);
+        return "L'últim jugador guanya el joc";
+      } else {
+        return "Has abandonat el joc" + partida.jugadors.splice(indexJugador,1);
+      }
+    },
+    acabarJoc( {idPartida} ){
+      partides.delete(idPartida);
+      return "Ha acabat el joc";
     }
 };
 
@@ -158,49 +184,3 @@ app.use('/graphql', graphqlHTTP({
 }));
 app.listen(4000);
 console.log('Executant servidor GraphQL API a http://localhost:4000/graphql');
-
-//Classe que representa un Alumne
-class Alumne {
-    constructor(codi, nom) {
-        this.codi = codi;
-        this.nom = nom;
-    }
-}
-
-// class Partida {
-//   constructor(idPartida, datosPartida) {
-//     this.idPartida = idPartida;
-//     this.datosPartida = datosPartida;
-//   }
-// }
-
-// class datosPartida {
-//   constructor(ronda, pot, jugadors){
-//     this.ronda = ronda;
-//     this.pot = pot;
-//     this.jugadors = jugadors;
-//   }
-// }
-
-// class Cartes {
-//   constructor(cartes){
-//     this.cartes = cartes;
-//   }
-// }
-
-// class Jugador {
-
-//   constructor(nom, diners, aposta, cartes){
-//     this.nom = nom;
-//     this.diners = diners;
-//     this.aposta = aposta;
-//     this.cartes = cartes;
-//   }
-// }
-
-
-// class PartidaConDatos {
-//   constructor(){
-//     this.partida = partida;
-//   }
-// }
