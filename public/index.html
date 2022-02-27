@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consumidor Rest Express</title>
+    <link rel="stylesheet" href="estils.css">
+</head>
+
+<body>
+    <div id="principal">
+        <input type="text" id="codiPartida" placeholder="Codi de Partida">
+        <input type="text" id="numjugadors" placeholder="Num Jugadores">
+        <button type="button" id="bEnviarcodi">Començar Partida</button><br><br>
+    </div>
+
+    <div id="operacions">
+        <label for="jugadores">ID Jugador:</label>
+        <select name="jugador" id="idJugador">
+            <option value="0">1</option>
+            <option value="1">2</option>
+            <option value="2">3</option>
+            <option value="3">4</option>
+            <option value="4">5</option>
+        </select>
+        <button id="verCartas">Ver Tus Cartas</button><br><br>
+        <input type="text" id="numApuesta" placeholder="Ingresa un número">
+        <button id="bApuesta">Apuesta</button><br><br>
+        <label for="cartas">Núm. Cartas:</label><br>
+        <select name="cartas" id="numDescartar" multiple>
+            <option value="0">1</option>
+            <option value="1">2</option>
+            <option value="2">3</option>
+            <option value="3">4</option>
+            <option value="4">5</option>
+        </select><br>
+        <button id="bDescartar">Descartar</button><br><br>
+        <button id="bRobar">Robar Cartas / Pasar Turno</button><br><br>
+        <button id="bAbandonar">Abandonar Partida</button><br><br><br><br>
+        <button id="verInfoPartida">Ver Info Partida</button><br><br><br><br>
+        <button id="acabarPartida">Acabar Partida</button>
+
+    </div>
+</body>
+<script src="index.js"></script>
+</html>

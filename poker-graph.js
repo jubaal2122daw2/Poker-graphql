@@ -85,11 +85,11 @@ const arrel = {
       console.log("Jugador final: " + JSON.stringify([...partides],null, 4));
       return 'Partida creada correctamente';
     },
-    informacioPartida( {idPartida} ){
+    informacioPartida: ( {idPartida} ) => {
       let tmp = partides.get(idPartida); //tmp, porque graphql no lee Map, no puedes hacer get directamente
       return tmp;
     },
-    interficieUsuari( {idPartida, idJugador} ){
+    interficieUsuari: ( {idPartida, idJugador} ) => {
       let partida = partides.get(idPartida);
       let tmp = {
           cartes: partida.jugadors[idJugador].cartes,
@@ -102,7 +102,7 @@ const arrel = {
       };
       return tmp;
     },
-    apostaJugador( {idPartida, quantitat} ){
+    apostaJugador: ( {idPartida, quantitat} ) => {
       let partida = partides.get(idPartida);
       if (partida.ronda == 1 || partida.ronda == 3) {
         let jugadors = partida.jugadors;
@@ -131,7 +131,7 @@ const arrel = {
         return "és moment de cambiar cartes";
       }
     },
-    tirarCarta( {idPartida, descartes} ){
+    tirarCarta: ( {idPartida, descartes} ) =>{
       let partida = partides.get(idPartida);
       let indexJugador = partida.torn;
       let cartes = partida.jugadors[indexJugador].cartes;
@@ -141,7 +141,7 @@ const arrel = {
       partida.jugadors[indexJugador].cartes = cartes.filter(n=>n);
       return "S'han esborrat les cartes ---> " + descartes;
     },
-    obtenerCarta( {idPartida} ){
+    obtenerCarta:( {idPartida} ) => {
       let partida = partides.get(idPartida);
       let indexJugador = partida.torn;
       let cartes = partida.jugadors[indexJugador].cartes;
@@ -160,7 +160,7 @@ const arrel = {
         return"és moment de fer apostes";
       }
     },
-    abandonarPartida( {idPartida} ){
+    abandonarPartida: ( {idPartida} ) => {
       let partida = partides.get(idPartida);
       let indexJugador = partida.torn;
       if(partida.jugadors.length == 2){
@@ -170,13 +170,14 @@ const arrel = {
         return "Has abandonat el joc" + partida.jugadors.splice(indexJugador,1);
       }
     },
-    acabarJoc( {idPartida} ){
+    acabarJoc: ( {idPartida} ) => {
       partides.delete(idPartida);
       return "Ha acabat el joc";
     }
 };
 
 const app = express();
+app.use(express.static('public')); //Crida al consumidor
 app.use('/graphql', graphqlHTTP({
     schema: esquema,
     rootValue: arrel,
